@@ -27,15 +27,20 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class FinalizerRunnable implements Runnable {
 
-    // Store the row references. Without this, objects would be garbage collected immediately so don't remove this! ;)
+    // Store the native object references. Without this, objects would be garbage collected immediately
+    // so don't remove this! ;)
     // A ConcurrentHashMap is used in lack of a ConcurrentHashSet in the Java API.
     // ConcurrentLinkedQueue was tried instead, but the removal operation turned out to be too slow.
-    static final Map<Reference<?>, Boolean> references = new ConcurrentHashMap<Reference<?>, Boolean>();
+    private static final Map<Reference<?>, Boolean> references = new ConcurrentHashMap<Reference<?>, Boolean>();
 
     // This is the actual reference queue in which the garbage collector will insert the row instances ready to be
     // cleaned up
     static final ReferenceQueue<NativeObject> referenceQueue = new ReferenceQueue<NativeObject>();
 
+    // Add a NativeObjectReference to the reference queue to avoid the reference being GCed immediately..
+    static void addReference(NativeObjectReference reference) {
+        references.put(reference, Boolean.TRUE);
+    }
 
     @Override
     public void run() {
@@ -45,7 +50,7 @@ public class FinalizerRunnable implements Runnable {
             try {
                 reference = (NativeObjectReference) referenceQueue.remove();
                 references.remove(reference);
-                UncheckedRow.nativeClose(reference.nativePointer);
+                reference.cleanup();
             } catch (InterruptedException e) {
                 //restore interrupted exception
                 Thread.currentThread().interrupt();

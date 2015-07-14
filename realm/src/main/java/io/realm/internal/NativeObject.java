@@ -21,5 +21,9 @@ package io.realm.internal;
  * All Java classes wrapping a core class should extend NativeObject.
  */
 public abstract class NativeObject {
-    long nativePointer;
+    final long nativePointer;
+
+    protected NativeObject(long nativePointer) {
+        this.nativePointer = nativePointer;
+    }
 }

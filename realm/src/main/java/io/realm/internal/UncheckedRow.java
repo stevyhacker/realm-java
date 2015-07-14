@@ -32,10 +32,22 @@ public class UncheckedRow extends NativeObject implements Row {
     final Context context; // This is only kept because for now it's needed by the constructor of LinkView
     final Table parent;
 
+    protected static class NativeUncheckedRowReference extends NativeObjectReference {
+
+        public NativeUncheckedRowReference(NativeObject referent) {
+            super(referent);
+        }
+
+        @Override
+        public void cleanup() {
+            UncheckedRow.nativeClose(NativeUncheckedRowReference.this.nativePointer);
+        }
+    }
+
     protected UncheckedRow(Context context, Table parent, long nativePtr) {
+        super(nativePtr);
         this.context = context;
         this.parent = parent;
-        this.nativePointer = nativePtr;
     }
 
     /**
@@ -48,7 +60,7 @@ public class UncheckedRow extends NativeObject implements Row {
     public static UncheckedRow get(Context context, Table table, long index) {
         long nativeRowPointer = table.nativeGetRowPtr(table.nativePtr, index);
         UncheckedRow row = new UncheckedRow(context, table, nativeRowPointer);
-        FinalizerRunnable.references.put(new NativeObjectReference(row, FinalizerRunnable.referenceQueue), Boolean.TRUE);
+        FinalizerRunnable.addReference(new NativeUncheckedRowReference(row));
         return row;
     }
 
@@ -60,9 +72,9 @@ public class UncheckedRow extends NativeObject implements Row {
      * @return an instance of Row for the LinkView and index specified
      */
     public static UncheckedRow get(Context context, LinkView linkView, long index) {
-        long nativeRowPointer = linkView.nativeGetRow(linkView.nativeLinkViewPtr, index);
+        long nativeRowPointer = linkView.nativeGetRow(linkView.nativePointer, index);
         UncheckedRow row = new UncheckedRow(context, linkView.parent.getLinkTarget(linkView.columnIndexInParent), nativeRowPointer);
-        FinalizerRunnable.references.put(new NativeObjectReference(row, FinalizerRunnable.referenceQueue), Boolean.TRUE);
+        FinalizerRunnable.addReference(new NativeUncheckedRowReference(row));
         return row;
     }
 
@@ -159,7 +171,12 @@ public class UncheckedRow extends NativeObject implements Row {
 
     @Override
     public LinkView getLinkList(long columnIndex) {
-        long nativeLinkViewPtr = nativeGetLinkView(nativePointer, columnIndex);
+        long nativeLinkViewPtr;
+        // Native LinkView is based on reference counter. Always use synchronized block
+        // when ref/unref it!
+        synchronized (LinkView.NativeLinkViewReference.class) {
+            nativeLinkViewPtr = nativeGetLinkView(nativePointer, columnIndex);
+        }
         return new LinkView(context, parent, columnIndex, nativeLinkViewPtr);
     }
 
@@ -286,7 +303,7 @@ public class UncheckedRow extends NativeObject implements Row {
     protected native void nativeSetMixed(long nativeRowPtr, long columnIndex, Mixed data);
     protected native void nativeSetLink(long nativeRowPtr, long columnIndex, long value);
     protected native void nativeNullifyLink(long nativeRowPtr, long columnIndex);
-    protected static native void nativeClose(long nativeRowPtr);
+    private static native void nativeClose(long nativeRowPtr);
     protected native boolean nativeIsAttached(long nativeRowPtr);
     protected native boolean nativeHasColumn(long nativeRowPtr, String columnName);
 }

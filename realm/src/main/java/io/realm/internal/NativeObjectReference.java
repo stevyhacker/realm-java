@@ -16,19 +16,20 @@
 package io.realm.internal;
 
 import java.lang.ref.PhantomReference;
-import java.lang.ref.ReferenceQueue;
 
 /**
  * This class is used for holding the reference to the native pointers present in NativeObjects.
  * This is required as phantom references cannot access the original objects for this value.
  */
-public class NativeObjectReference extends PhantomReference<NativeObject> {
+public abstract class NativeObjectReference extends PhantomReference<NativeObject> {
 
     // The pointer to the native object to be handled
     final long nativePointer;
 
-    public NativeObjectReference(NativeObject referent, ReferenceQueue<? super NativeObject> referenceQueue) {
-        super(referent, referenceQueue);
+    public NativeObjectReference(NativeObject referent) {
+        super(referent, FinalizerRunnable.referenceQueue);
         nativePointer = referent.nativePointer;
     }
+
+    public abstract void cleanup();
 }
