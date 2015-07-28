@@ -69,8 +69,8 @@ public class RealmProxyClassGenerator {
                 .emitEmptyLine();
 
         ArrayList<String> imports = new ArrayList<String>();
-        imports.add("android.util.JsonReader");
-        imports.add("android.util.JsonToken");
+        imports.add("android.support.v11.JsonReader");
+        imports.add("android.support.v11.JsonToken");
         imports.add("io.realm.RealmObject");
         imports.add("io.realm.exceptions.RealmException");
         imports.add("io.realm.exceptions.RealmMigrationNeededException");
